@@ -1,10 +1,8 @@
 ---
 ## Author
 author:
-  name: Дмитрий Сергеевич Кулябов
-  degrees: DSc
-  orcid: 0000-0002-0877-7063
-  email: kulyabov-ds@rudn.ru
+  name: Арсений Валерьевич Агаев
+  email: 1032221668@rudn.ru
   affiliation:
     - name: Российский университет дружбы народов
       country: Российская Федерация
@@ -13,55 +11,255 @@ author:
       address: ул. Миклухо-Маклая, д. 6
 
 ## Title
-title: "Шаблон отчёта по лабораторной работе"
-subtitle: "Простейший вариант"
+title: "Лабораторная работа №7"
+subtitle: "Адресация IPv4 и IPv6. Настройка DHCP"
 license: "CC BY"
 ---
 
 # Цель работы
 
-Здесь приводится формулировка цели лабораторной работы.
-Формулировки цели для каждой лабораторной работы приведены в методических указаниях.
-
-Цель данного шаблона --- максимально упростить подготовку отчётов по лабораторным работам.
-Модифицируя данный шаблон, студенты смогут без труда подготовить отчёт по лабораторным работам, а также познакомиться с основными возможностями разметки Markdown.
+Получить навыки настройки службы DHCP на сетевом оборудовании для распределения адресов IPv4 и IPv6.
 
 # Задание
 
-Здесь приводится описание задания в соответствии с рекомендациями методического пособия и выданным вариантом.
+## Настройка DHCP в случае IPv4
 
-# Теоретическое введение
+- Настроить на маршрутизаторе, имеющим адрес 10.0.0.1, DHCP-сервис по распредлению IPv4-адресов
+из диапазона 10.0.0.2 - 10.0.0.253.
 
-Здесь описываются теоретические аспекты, связанные с выполнением работы.
+- Настроить получение адреса по DHCP на узле.
 
-Например, в [табл. @tbl-std-dir] приведено краткое описание стандартных каталогов Unix.
+- Исследовать пакеты DHCP.
 
-| Имя каталога | Описание каталога                                                                                                          |
-|--------------|----------------------------------------------------------------------------------------------------------------------------|
-| `/`          | Корневая директория, содержащая всю файловую                                                                               |
-| `/bin `      | Основные системные утилиты, необходимые как в однопользовательском режиме, так и при обычной работе всем пользователям     |
-| `/etc`       | Общесистемные конфигурационные файлы и файлы конфигурации установленных программ                                           |
-| `/home`      | Содержит домашние директории пользователей, которые, в свою очередь, содержат персональные настройки и данные пользователя |
-| `/media`     | Точки монтирования для сменных носителей                                                                                   |
-| `/root`      | Домашняя директория пользователя  `root`                                                                                   |
-| `/tmp`       | Временные файлы                                                                                                            |
-| `/usr`       | Вторичная иерархия для данных пользователя                                                                                 |
+## Настройка DHCP в случае IPv6
 
-: Описание некоторых каталогов файловой системы GNU Linux {#tbl-std-dir}
+- На интерфейсе маршрутизатора eth1 настроить DHCPv6 без отслеживания состояния.
 
-Более подробно про Unix см. в [@tanenbaum_book_modern-os_ru; @robbins_book_bash_en; @zarrelli_book_mastering-bash_en; @newham_book_learning-bash_en].
+- На интерфейсе маршрутизатора eth2 настроить DHCPv6 с учётом отслеживания состояния.
 
 # Выполнение лабораторной работы
 
-Описываются проведённые действия, в качестве иллюстрации даётся ссылка на иллюстрацию ([рис. @fig-001]).
+## Настройка DHCP в случае IPv4
 
-![V Сольвеевский конгресс (1927) «Электроны и фотоны»](image/solvay.jpg){#fig-001 width=70%}
+В соответствии с топологией, настроил рабочее пространство ([рис. @fig-001]):
+
+![Топология IPv4](image/1.png){#fig-001 width=70%}
+
+На маршрутизаторе изменил имя устройства, доменное имя и заменил системного пользователя ([рис. @fig-002]):
+
+```
+configure
+set system host-name avagaev-gw-01
+set system domain-name avagaev.net
+set system login user avagaev authentication plaintext-password strongpass
+commit
+save
+exit
+exit
+
+avagaev-gw-01 login: avagaev
+Password:
+configure
+delete system login user vyos
+commit
+save
+```
+
+![Системные настройки маршрутизатора](image/2.png){#fig-002 width=70%}
+
+После настроил адресацию IPv4 и добавил конфигурацию DHCP-сервера ([рис. @fig-003]):
+
+```
+set interfaces ethernet eth0 address 10.0.0.1/24
+set service dhcp-server shared-network-name \
+    avagaev domain-name avagaev.net
+set service dhcp-server shared-network-name \
+    avagaev name-server 10.0.0.1
+set service dhcp-server shared-network-name \
+    avagaev subnet 10.0.0.0/24 default-router 10.0.0.1
+set service dhcp-server shared-network-name \
+    avagaev subnet 10.0.0.0/24 range hosts start 10.0.0.2
+set service dhcp-server shared-network-name \
+    avagaev subnet 10.0.0.0/24 range hosts stop 10.0.0.253
+delete interfaces ethernet eth0 address dhcp
+commit
+save
+exit
+```
+
+![Настройки IPv4](image/3.png){#fig-003 width=70%}
+
+Просмотрел статистику DHCP-сервера и выданных адресов:
+
+```
+show dhcp server statistics
+show dhcp server leases
+```
+
+После настроил узел ([рис. @fig-004]):
+
+```
+ip dhcp -d
+save
+```
+
+![Настройки IPv4 узла](image/4.png){#fig-004 width=70%}
+
+Как можно понять из вывода, узел успешно обратился к маршрутизатору и получить адрес ```10.0.0.2```.
+
+Проверил конфигурацию IPv4 и пропинговал маршрутизатор ([рис. @fig-005]):
+
+```
+show ip
+ping 10.0.0.1 -c 2
+```
+
+![Проверка конфигурации IPv4 на узле](image/5.png){#fig-005 width=70%}
+
+Далее проверил захваченные пакеты ([рис. @fig-006]):
+
+![Проверка захваченных пакетов](image/6.png){#fig-006 width=70%}
+
+Видно, как PC1 спросил, кто ```10.0.0.2``` и как маршрутизатор, после запроса по протоколу 
+DHCP ответил узлу и назначил ему данный адрес, после видно как они обменялись пакетами при пропинговке.
+
+## Настройка DHCP в случае IPv6
+
+В соответствии с топологией, дополнил рабочее пространство ([рис. @fig-007]):
+
+![Топология IPv6](image/7.png){#fig-007 width=70%}
+
+После настроил адресацию IPv6 на маршрутизаторе ([рис. @fig-008]):
+
+```
+configure
+set interfaces ethernet eth1 address 2000::1/64
+set interfaces ethernet eth2 address 2001::1/64
+commit
+save
+```
+
+![Настройки IPv6](image/8.png){#fig-008 width=70%}
+
+Далее, для eth1 настроил DHCPv6 без отслеживания состояния ([рис. @fig-009]):
+
+```
+set service router-advert interface eth1 prefix 2000::/64
+set service router-advert interface eth1 other-config-flag
+
+set service dhcpv6-server shared-network-name avagaev-stateless
+set service dhcpv6-server shared-network-name avagaev-stateless \
+    subnet 2000::0/64
+set service dhcpv6-server shared-network-name avagaev-stateless \
+    common-options name-server 2000::1
+set service dhcpv6-server shared-network-name avagaev-stateless
+    common-options domain-search avagaev.net
+commit
+save
+run show configuration
+```
+
+![Настройки IPv6 без состояния](image/9.png){#fig-009 width=70%}
+
+Настроил узел PC2 ([рис. @fig-010]):
+
+```
+ifconfig
+route -n -A inet6
+
+ping 2000::1 -c 2
+cat /etc/resolv.conf
+
+dhclient -6 -S -v eth0
+```
+
+![Настройки IPv6 узла PC2](image/10.png){#fig-010 width=70%}
+
+После вновь пропинговал маршрутизатор и проверил настройки DNS ([рис. @fig-011]):
+
+```
+ping 2000::1 -c 2
+cat /etc/resolv.conf
+```
+
+![Проверка конфигурации IPv6 на узле PC2](image/11.png){#fig-011 width=70%}
+
+Посмотрел статистику DHCP-сервера и выданные адреса ([рис. @fig-012]):
+
+```
+run show dhcpv6 server leases
+```
+
+![Проверка статистики DHCPv6 Stateless](image/12.png){#fig-012 width=70%}
+
+Из-за отсутствия отслеживания состояния, никаких новых записей не появилось.
+
+Посмотрел захваченные пакеты ([рис. @fig-013]):
+
+![Проверка захваченных пакетов](image/13.png){#fig-013 width=70%}
+
+Аналогично IPv4, сервер также ответил на запрос узла и выдал IP-адрес.
+
+После на маршрутизаторе настроил объявления о маршрутизаторах и добавил конфигурацию DHCP-сервера:
+
+```
+set service router-advert interface eth2 managed-flag
+
+set service dhcpv6-server shared-network-name avagaev-stateful
+set service dhcpv6-server shared-network-name avagaev-stateful \
+    subnet 2001::0/64
+set service dhcpv6-server shared-network-name avagaev-stateful \
+    subnet 2001::0/64 name-server 2001::1
+set service dhcpv6-server shared-network-name avagaev-stateful \
+    subnet 2001::0/64 domain-search avagaev.net
+set service dhcpv6-server shared-network-name avagaev-stateful \
+    subnet 2001::0/64 address-range start 2001::100 stop 2001::199
+commit
+save
+```
+
+![Настройки IPv6 c состоянием](image/14.png){#fig-014 width=70%}
+
+Настроил узел PC3 ([рис. @fig-015]):
+
+```
+ifconfig
+route -n -A inet6
+
+cat /etc/resolv.conf
+
+dhclient -6 -S -v eth0
+```
+
+![Настройки IPv6 узла PC3](image/15.png){#fig-015 width=70%}
+
+Проверил настройки сети после получения адреса ([рис. @fig-016]):
+
+```
+ifconfig
+route -n -A inet6
+ping 2001::1 -c 2
+cat /etc/resolv.conf
+```
+
+![Проверка конфигурации IPv6 на узле PC3](image/16.png){#fig-016 width=70%}
+
+Посмотрел статистику DHCP-сервера и выданные адреса ([рис. @fig-017]):
+
+```
+run show dhcpv6 server leases
+```
+
+![Проверка статистики DHCPv6 Statefull](image/17.png){#fig-017 width=70%}
+
+Появилась запись о узле PC3.
+
+Посмотрел захваченные пакеты ([рис. @fig-018]):
+
+![Проверка захваченных пакетов](image/18.png){#fig-018 width=70%}
+
+Теперь, перед выдачей адреса узлу, маршрутизатор сделал два дополнительных запроса.
 
 # Выводы
 
-Здесь кратко описываются итоги проделанной работы.
-
-# Список литературы{.unnumbered}
-
-::: {#refs}
-:::
+Я получил навыки настройки службы DHCP на сетевом оборудовании для распределения адресов IPv4 и IPv6.
